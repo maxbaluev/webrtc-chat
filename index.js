@@ -35,7 +35,7 @@ var options = {
         }else{
           //подключаемся к сигнальному серверу
           socket = io.connect('/', {
-            //forceNew: true
+            forceNew: true
           });
           socket.emit('login', {name: name})          
         }
