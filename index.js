@@ -76,7 +76,6 @@ var options = {
               
               // Создаем DataChannel по которому и будет происходить обмен сообщениями
               var channel = pc.createDataChannel("chatchannel", {});
-              console.log(channel);
               channel.owner = data.name;
               peers[data.name].channel = channel;
               
@@ -157,7 +156,6 @@ var options = {
           };
           //Отправляем запрос на скачивание файла
           msgSend('fileSend', files[file.name], 'all');
-          console.log(files[file.name]);
         }
 
         fileInput.onchange = function(e) {  
@@ -182,8 +180,7 @@ function msgSend(type, data, to){
    $('.chat').append("<div>Вы отправили запрос на скачивание файла " + data.name + " всем пользователям.</div>");
    $('.chat-text').val('');
     //Отправляем запрос на скачивание всем пирам
-    var msg = '000002' + JSON.stringify(data);
-    console.log(msg);
+    var msg = '000002' + JSON.stringify(data);    
  }
  if(type === 'acceptFile'){
    var msg = '000003' + data;
@@ -275,19 +272,13 @@ function bindEvents (channel) {
         var content = received_files[id].content;
         
         if(content != undefined){
-          console.log(content.byteLength);
           received_files[id].content = concatBuffers(content,data);
         }
         
         //Если последний чанк - сохраняем файл
         if(parseInt(chunk) + 1 === parseInt(total_chunks)){
-          console.log('go');
-          console.log(received_files[id].type);
-          saveByteArrayToFile(received_files[id].content, received_files[id].name);
-          
+          saveByteArrayToFile(received_files[id].content, received_files[id].name);          
         }
-        
-        
     }
 	};
 }
