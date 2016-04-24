@@ -2,7 +2,7 @@ var app = require('express')();
 var server = require('http').createServer(app);
 
 var virtualDirPath = process.env.virtualDirPath || '';
-var io = require('socket.io')(server)//(server, { path: virtualDirPath + '/socket.io' });
+var io = require('socket.io')(server, { path: virtualDirPath + '/socket.io' });
 var users = {};
 
 server.listen(process.env.PORT || 8080, function () {
@@ -38,17 +38,23 @@ io.on('connection', function (socket) {
     //format offer
     socket.on('offer', function(data){//data.name, data.localDescription
         console.log('Поулчили offer для:', data.to);
-        users[data.to].emit("offer", data);
+        if(users[data.to] != undefined){
+            users[data.to].emit("offer", data);
+        }
     });   
     
     socket.on('answer', function(data){//data.name, data.localDescription
         console.log('Поулчили answer для:', data.to);
-        users[data.to].emit("answer", data);
+        if(users[data.to] != undefined){
+            users[data.to].emit("answer", data);
+        }
     });
     
     socket.on('candidate', function(data){//data.name, data.candidate
         console.log('Поулчили candidate для:', data.to);
-        users[data.to].emit("candidate", data);
+        if(users[data.to] != undefined){
+            users[data.to].emit("candidate", data);
+        }
     }); 
     
     socket.on('disconnect', function (data) {
