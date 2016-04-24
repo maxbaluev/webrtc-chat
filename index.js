@@ -34,7 +34,7 @@ var options = {
           return;
         }else{
           //подключаемся к сигнальному серверу
-          socket = io.connect(':8080', {
+          socket = io.connect('/', {
             //forceNew: true
           });
           socket.emit('login', {name: name})          
