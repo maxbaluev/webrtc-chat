@@ -1,0 +1,16 @@
+{
+  "name": "webrtc-textchat",
+  "version": "0.0.1",
+  "engines":{
+    "node":"4.4.0"
+  },
+  "description": "A simple work",
+  "main": "app.js",
+  "author": "Max Baluev",
+  "private": true,
+  "license": "BSD",
+  "dependencies": {
+    "socket.io":"1.4.5",
+    "express":"4.13.4"
+  }
+}

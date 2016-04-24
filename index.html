@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"> 
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>  
+</head>
+<body>
+  
+<div class="modal fade" id="login-modal" tabindex="-1" role="dialog" data-keyboard="false" data-backdrop="static" aria-hidden="true" style="display: none;">
+  <div class="modal-dialog">
+    <div class="loginmodal-container">
+      <h1>Войдите в чат</h1><br>
+      <form id="loginForm">
+        <input type="text" name="username" placeholder="Username">
+        <input type="submit" id="login" class="login loginmodal-submit" value="Вход">
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+    <div class="info col-md-1">
+    
+  </div>
+  <div class="content col-md-10 no-padding">
+    
+    <div class="col-md-12 no-padding">
+      <div class="chat col-md-12 no-padding">
+      </div>
+      <div class="bottom-form no-padding">
+      <form class="chatForm">
+          <div class="chat-input input-group">  
+            
+           <div class="row">
+            <div class="col-md-7 no-padding">        
+              <input type="text" class="chat-text form-control" placeholder="Введите сообщение" />
+            </div>
+              <span class="col-md-5 btn-group no-padding">
+                <button class="btn btn-secondary btn-success" type="submit">Отправить сообщение</button> 
+                <span class="file-input input-group-btn">    
+                  <button class="btn btn-secondary btn-info" type="submit">Отправить файл</button>  
+                  <input type="file" id="fileInput" name="files"/>
+                </span> 
+            </span>
+            </div> 
+          </div>
+      </form> 
+      </div>   
+    </div>
+    
+  </div>
+  <div class="nicknames col-md-2">
+    Список пользователей:
+  </div>
+</div>
+
+
+
+  
+<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+<script src="index.js"></script>
+   
+</body>
+</html>
