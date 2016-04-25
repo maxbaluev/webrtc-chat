@@ -7,7 +7,6 @@ var peers = {};
 var files = {};
 var received_files = {};
 var server = {
-
   iceServers: [
     {urls: "stun:23.21.150.121"},
     {urls: "stun:stun.l.google.com:19302"}
@@ -34,7 +33,7 @@ var options = {
           return;
         }else{
           //подключаемся к сигнальному серверу
-          socket = io.connect(':8080/', {
+          socket = io.connect('/', {
             forceNew: true
           });
           socket.emit('login', {name: name});       
