@@ -5,7 +5,7 @@ var SessionDescription = window.RTCSessionDescription || window.RTCSessionDescri
 var socket;
 var peers = {};
 var files = {};
-var received_files = {};
+var receivedFiles = {};
 var server = {
   iceServers: [
     {urls: "stun:23.21.150.121"},
@@ -40,7 +40,7 @@ var options = {
         }
         
         socket.on('login', function(data){
-          var current_name = data.name;
+          var currentName = data.name;
           
           if(data.state === 'taken'){
             alert('Пльзователь с таким ником уже находится в чате');
@@ -69,7 +69,7 @@ var options = {
 	            var pc = new PeerConnection(server, options);
               
               // Инициализируем его
-            	initConn(pc, data.name, current_name, "offer");
+            	initConn(pc, data.name, currentName, "offer");
               
               // Сохраняем пир в списке
               peers[data.name].connection = pc;
@@ -93,7 +93,7 @@ var options = {
             
             socket.on('candidate', function(data){
               console.log('receive candidate from ', data.from);
-              createConnection(data.from, current_name);
+              createConnection(data.from, currentName);
               var pc = peers[data.from].connection;
 	            pc.addIceCandidate(new IceCandidate(data.candidate));
             });
@@ -101,7 +101,7 @@ var options = {
             socket.on('offer', function(data){ //name,localDescription
                 console.log('receive offer from ', data.from);
                 
-                createConnection(data.from, current_name);
+                createConnection(data.from, currentName);
                 
                 var pc = peers[data.from].connection;
                 
@@ -190,7 +190,6 @@ function msgSend(type, data, to){
       sendPacket(dataPacket, to);
     }
   }   
-  console.log(data);
   if(type === 'fileSend' && data.size >= 0){
     //Показываем сообщения у текущего пользователя
     $('.chat').append("<div>Вы отправили запрос на скачивание файла " + data.name + " всем пользователям.</div>");
@@ -210,7 +209,6 @@ function msgSend(type, data, to){
     var chunkSize = 16384-42; //42 - мета информация о файле
     var totalChunks = leftPadWithZeros( Math.ceil(data.content.byteLength/chunkSize), 6 );
     var id = data.id;
-    console.log(data.content.byteLength);
     
     for(var i = 0; i < data.content.byteLength; i = i + chunkSize){
       var binaryData = data.content.slice(i, i + chunkSize);  
@@ -298,7 +296,7 @@ function bindEvents (channel) {
         var data = JSON.parse(msg);
         
         //Сохраняем мета информацию о принимаемом файле
-        received_files[data.id] = {
+        receivedFiles[data.id] = {
           id: data.id,
           name: data.name,
           size: data.size,
@@ -323,33 +321,27 @@ function bindEvents (channel) {
        }
     }else if(msgType === '004'){
       //Принимаем чанк только если есть ожидаемый файл и мы не принимали чанк раньше
-      var content = received_files[transferId].content;
+      var content = receivedFiles[transferId].content;
       if(parseInt(currentChunk) === 1){
         var checkLength = 1;
-        console.log('first');
       }else if(parseInt(currentChunk) > 1 && message.byteLength < 16342){
         var checkLength = (parseInt(currentChunk) - 1)*16342 + message.byteLength + 1;
-        console.log('second');
       }else{
         var checkLength = parseInt(currentChunk)*16342 + 1;
-        console.log('thrid');
       }      
       if(content !== undefined && content.byteLength < checkLength){
-        console.log(currentChunk);
-        console.log(totalChunks);
-        received_files[transferId].content = concatBuffers(content,message);
+        receivedFiles[transferId].content = concatBuffers(content,message);
       }
       //Если последний чанк - сохраняем файл
       if(parseInt(currentChunk) === parseInt(totalChunks)){
-        console.log(received_files[transferId].content.byteLength);
-        saveByteArrayToFile(received_files[transferId].content, received_files[transferId].name);          
+        saveByteArrayToFile(receivedFiles[transferId].content, receivedFiles[transferId].name);          
       }        
     }
 	}
 }
 
 
-function createConnection(name, current_name){
+function createConnection(name, currentName){
    //Инициализируем подключение если его нет
   if (peers[name] === undefined){
     peers[name] = {
@@ -357,7 +349,7 @@ function createConnection(name, current_name){
     };    
     var pc = new PeerConnection(server, options);
     
-    initConn(pc, name, current_name, 'answer');
+    initConn(pc, name, currentName, 'answer');
     
     peers[name].connection = pc;
     pc.ondatachannel = function(e) {
@@ -368,7 +360,7 @@ function createConnection(name, current_name){
   }
 }
 
-function initConn(pc, name, current_name, sdpType) {
+function initConn(pc, name, currentName, sdpType) {
 	pc.onicecandidate = function (event) {
 		if (event.candidate) {
 			// При обнаружении нового ICE кандидата добавляем его в список для дальнейшей отправки
@@ -377,11 +369,11 @@ function initConn(pc, name, current_name, sdpType) {
 			// Когда обнаружение кандидатов завершено, обработчик будет вызван еще раз, но без кандидата
 			// В этом случае мы отправялем пиру сначала SDP offer или SDP answer (в зависимости от SDP запроса)
       
-			socket.emit(sdpType, {to: name, from: current_name, localDescription: pc.localDescription});
+			socket.emit(sdpType, {to: name, from: currentName, localDescription: pc.localDescription});
       
 			// ...а затем все найденные ранее ICE кандидаты
 			for (var i = 0; i < peers[name].cache.length; i++) {
-        socket.emit("candidate", {to: name, from: current_name, candidate: peers[name].cache[i]});
+        socket.emit("candidate", {to: name, from: currentName, candidate: peers[name].cache[i]});
 			}
 		}
 	}
