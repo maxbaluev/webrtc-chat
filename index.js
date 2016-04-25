@@ -268,49 +268,6 @@ function sendPacket(dataPacket, to){
    }   
 }
 
-//Вспомогательные функции
-function ab2str(buf) {
-  return String.fromCharCode.apply(null, new Uint16Array(buf));
-}
-function str2ab(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint16Array(buf);
-  for (var i=0, strLen=str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-function leftPadWithZeros(number, length){
-    var str = '' + number;
-    while (str.length < length){
-        str = '0' + str;
-    }
-    return str;
-}
-function concatFiveBuffers(buffer1, buffer2, buffer3, buffer4, buffer5) {
-  var tmpBuffer = concatBuffers(buffer1, buffer2);
-  var tmpBuffer = concatBuffers(tmpBuffer, buffer3);
-  var tmpBuffer = concatBuffers(tmpBuffer, buffer4);
-  var tmpBuffer = concatBuffers(tmpBuffer, buffer5);  
-  return tmpBuffer;
-};
-function concatBuffers(buffer1, buffer2){
-  var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
-  tmp.set(new Uint8Array(buffer1), 0);
-  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
-  return tmp.buffer;
-};
-function saveByteArrayToFile(data, name) {
-   var a = document.createElement("a");
-   document.body.appendChild(a);
-   var blob = new Blob([data], {type: "octet/stream"}),
-   url = window.URL.createObjectURL(blob);
-   a.href = url;
-   a.download = name;
-   a.click();
-   window.URL.revokeObjectURL(url);
-}
-
 function bindEvents (channel) {
 	channel.onopen = function () {
     //Добавляем в список пользователей владельца канала.
@@ -454,4 +411,49 @@ function onBeforeUnload(e) {
 			}
 		}
 	}
+}
+
+
+
+//Вспомогательные функции
+function ab2str(buf) {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
+}
+function str2ab(str) {
+  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var bufView = new Uint16Array(buf);
+  for (var i=0, strLen=str.length; i < strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+function leftPadWithZeros(number, length){
+    var str = '' + number;
+    while (str.length < length){
+        str = '0' + str;
+    }
+    return str;
+}
+function concatFiveBuffers(buffer1, buffer2, buffer3, buffer4, buffer5) {
+  var tmpBuffer = concatBuffers(buffer1, buffer2);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer3);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer4);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer5);  
+  return tmpBuffer;
+};
+function concatBuffers(buffer1, buffer2){
+  var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+  tmp.set(new Uint8Array(buffer1), 0);
+  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+  return tmp.buffer;
+};
+function saveByteArrayToFile(data, name) {
+   var a = document.createElement("a");
+   document.body.appendChild(a);
+   var blob = new Blob([data], {type: "octet/stream"}),
+   url = window.URL.createObjectURL(blob);
+   a.href = url;
+   a.download = name;
+   a.click();
+   window.URL.revokeObjectURL(url);
 }
