@@ -1,6 +1,6 @@
-var PeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-var IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
-var SessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
+var PeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+var IceCandidate = window.RTCIceCandidate || window.RTCIceCandidate;
+var SessionDescription = window.RTCSessionDescription || window.RTCSessionDescription;
 
 var socket;
 var peers = {};
@@ -9,8 +9,8 @@ var received_files = {};
 var server = {
 
   iceServers: [
-    {url: "stun:23.21.150.121"},
-    {url: "stun:stun.l.google.com:19302"}
+    {urls: "stun:23.21.150.121"},
+    {urls: "stun:stun.l.google.com:19302"}
   ]
 };
 var options = {
@@ -34,10 +34,10 @@ var options = {
           return;
         }else{
           //подключаемся к сигнальному серверу
-          socket = io.connect('/', {
+          socket = io.connect(':8080/', {
             forceNew: true
           });
-          socket.emit('login', {name: name})          
+          socket.emit('login', {name: name});       
         }
         
         socket.on('login', function(data){
@@ -147,16 +147,15 @@ var options = {
 
         fReader.onload = function(e) {
           var file = document.getElementById('fileInput').files[0];
-          files[file.name] = {
-            id: Math.random().toString().slice(5,11),//6 рандомных цифр
+          var id = Math.random().toString().slice(5,11);
+          files[id] = {
+            id: id,//6 рандомных цифр
             name: file.name,
             size: file.size,
-            type: file.type,
-            lastMod: file.lastModifiedDate,
             content: e.target.result
           };
           //Отправляем запрос на скачивание файла
-          msgSend('fileSend', files[file.name], 'all');
+          msgSend('fileSend', files[id], 'all');
         }
 
         fileInput.onchange = function(e) {  
@@ -169,31 +168,89 @@ var options = {
  });
       
 
-function msgSend(type, data, to){ 
- if(type === 'message' && data != ''){
-   //Показываем сообщения у текущего пользователя
-   $('.chat').append("<div>Вы: " + data + "</div>");
-   $('.chat-text').val('');
-   var msg = '000001' + data;    
- }
- if(type === 'fileSend' && data.size >= 0){
-   //Показываем сообщения у текущего пользователя
-   $('.chat').append("<div>Вы отправили запрос на скачивание файла " + data.name + " всем пользователям.</div>");
-   $('.chat-text').val('');
+function msgSend(type, data, to){
+  //Отправляем все сообщения как ArrayBuffer в следующем формате
+  // msgType(6 bytes)   currentChunk(12 bytes)   totalChunks(12 bytes)   transferId(12 bytes)      message(16342 bytes max)       =   16384
+  //       001            000001                     000001               000000                   Text message or bufferArray
+  
+  if(type === 'message' && data != ''){
+    //Показываем сообщения у текущего пользователя
+    $('.chat').append("<div>Вы: " + data + "</div>");
+    $('.chat-text').val('');
+    
+    var currentChunk = 0;
+    var totalChunks = Math.ceil(data.length/8171);
+    if(data.length > 8171){
+      for(var i = 0; i < data.length; i = i + 8171){
+        var dataToSend = data.slice(i,( i + 8171 ));
+        var dataPacket = createPacket('message', ++currentChunk, totalChunks, '000000', dataToSend);
+        sendPacket(dataPacket, to);
+      }
+    }else{
+      var dataPacket = createPacket('message', ++currentChunk, totalChunks, '000000', data);
+      sendPacket(dataPacket, to);
+    }
+  }   
+  console.log(data);
+  if(type === 'fileSend' && data.size >= 0){
+    //Показываем сообщения у текущего пользователя
+    $('.chat').append("<div>Вы отправили запрос на скачивание файла " + data.name + " всем пользователям.</div>");
+    $('.chat-text').val('');
     //Отправляем запрос на скачивание всем пирам
-    var msg = '000002' + JSON.stringify(data);    
- }
- if(type === 'acceptFile'){
-   var msg = '000003' + data;
- }
- 
- if(to === 'all'){
- //Отправляем сообщение всем пирам
+    var dataPacket = createPacket('fileSend', '1', '1', '000000', JSON.stringify(data));
+    sendPacket(dataPacket, to);
+  } 
+  if(type === 'acceptFile'){
+    //Отправляем запрос на согласие скачивания
+    var dataPacket = createPacket('acceptFile', '1', '1', '000000', data);
+    sendPacket(dataPacket, to);
+  } 
+  if(type === 'file'){
+    //Отправляем файл    
+    var currentChunk = 0;
+    var chunkSize = 16384-42; //42 - мета информация о файле
+    var totalChunks = leftPadWithZeros( Math.ceil(data.content.byteLength/chunkSize), 6 );
+    var id = data.id;
+    console.log(data.content.byteLength);
+    
+    for(var i = 0; i < data.content.byteLength; i = i + chunkSize){
+      var binaryData = data.content.slice(i, i + chunkSize);  
+      var dataPacket = createPacket('file', ++currentChunk, totalChunks, id, binaryData);
+      sendPacket(dataPacket, to);           
+    }  
+  } 
+}
+function createPacket(msgType, currentChunk, totalChunks, transferId, message){ 
+  if(msgType === 'message'){
+    var msgTypeBytes =  str2ab('001');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'fileSend'){
+    var msgTypeBytes =  str2ab('002');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'acceptFile'){
+    var msgTypeBytes =  str2ab('003');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'file'){
+    var msgTypeBytes =  str2ab('004');
+    var msgBytes = message;
+  }
+  
+  var currentChunkBytes = str2ab(leftPadWithZeros(currentChunk, 6));
+  var totalChunksBytes = str2ab(leftPadWithZeros(totalChunks, 6));
+  var transferIdBytes =  str2ab(transferId); 
+  
+  return concatFiveBuffers(msgTypeBytes, currentChunkBytes, totalChunksBytes, transferIdBytes, msgBytes);
+}
+function sendPacket(dataPacket, to){
+  //TODO иногда при отправке больших файлов падает канал, нужно подымать его по новой 
+  //и повторять отправку недоставленных чанков  
+  if(to === 'all'){
+  //Отправляем сообщение всем пирам
     for (var peer in peers) {
       if (peers.hasOwnProperty(peer)) {
         if (peers[peer].channel !== undefined) {
           try {
-             peers[peer].channel.send(msg);
+             peers[peer].channel.send(dataPacket);
            } catch (e) {
               console.log(e);
            }
@@ -203,86 +260,46 @@ function msgSend(type, data, to){
    }else{
      if(peers[to] != null){
       try{
-        peers[to].channel.send(msg);
+        peers[to].channel.send(dataPacket);
       }catch(e){
         console.log(e);
       }       
      }
-   }
+   }   
 }
-        
-function bindEvents (channel) {
-	channel.onopen = function () {
-    //TODO добавить в список пользоавтелей channel.owner
-    $('.nicknames').append('<div>' + channel.owner + '</div>');
-    console.log('connection open');
-	};
-	channel.onmessage = function (e) {
-    //Если мы получили текстовое сообщение, запрос скачать или отправить файл
-    if(typeof(e.data) === 'string'){
-      if(e.data.substr(0, 6) === '000001'){ // сообщение
-        console.log('Получили текстовое сообщение');
-        //Показываем сообщения у текущего пользователя
-        var msg = e.data.substr(6, e.data.length);
-        $('.chat').append('<div>' + e.currentTarget.owner + ': ' + msg + '</div>');
-        
-        //Скроллим чат
-        var height = $('.chat')[0].scrollHeight;
-        $('.chat').scrollTop(height);
-        
-      }else if(e.data.substr(0, 6) === '000002'){// запрос на скачивание файла
-        console.log('Запрос на скачивание файла от', channel.owner);
-        var json_msg = e.data.substr(6, e.data.length);
-        var data = JSON.parse(json_msg);
-        
-        //Сохраняем метаинформацию о принимаемом файле
-        received_files[data.id] = {
-          name: data.name,
-          size: data.size,
-          type: data.type,
-          content: new ArrayBuffer(0),
-          receivedChunks: 0,
-          totalChunks:  (data.size/16384),
-          from: channel.owner
-        }
-        
-        
-        $('.chat').append('<div>' + e.currentTarget.owner + ': <a href="#" onclick="acceptFile(\'' + data.name + '\',\'' + channel.owner + '\')">' + data.name + '</a></div>');
-      
-    }else if(e.data.substr(0, 6) === '000003'){//Запрос на отправку файла
-        //Отправляем запрошеный файл, если он есть
-        console.log('Получили запрос на отправку файла');
-        var filename = e.data.substr(6, e.data.length);
-        var to = channel.owner;
-        
-        if (files[filename].size === 0) {
-          alert('Файл пустой.Не удалось передать файл пользователю ', to);
-          return;
-        }else if(files[filename].size > 0 && peers[to].channel !== undefined){
-          sendFile(files[filename], to);
-        }     
-      }     
-    }else if(typeof(e.data) === 'object'){
-        //Поулчаем мета информацию
-        var meta = e.data.slice(0,36);
-        var full_meta = ab2str(meta);
-        var chunk = full_meta.slice(0,6);
-        var total_chunks = full_meta.slice(6,12);
-        var id =  full_meta.slice(12,18);
-        var data = e.data.slice(36,e.data.length);
-        var content = received_files[id].content;
-        
-        if(content != undefined){
-          received_files[id].content = concatBuffers(content,data);
-        }
-        
-        //Если последний чанк - сохраняем файл
-        if(parseInt(chunk) + 1 === parseInt(total_chunks)){
-          saveByteArrayToFile(received_files[id].content, received_files[id].name);          
-        }
+
+//Вспомогательные функции
+function ab2str(buf) {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
+}
+function str2ab(str) {
+  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var bufView = new Uint16Array(buf);
+  for (var i=0, strLen=str.length; i < strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+function leftPadWithZeros(number, length){
+    var str = '' + number;
+    while (str.length < length){
+        str = '0' + str;
     }
-	};
+    return str;
 }
+function concatFiveBuffers(buffer1, buffer2, buffer3, buffer4, buffer5) {
+  var tmpBuffer = concatBuffers(buffer1, buffer2);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer3);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer4);
+  var tmpBuffer = concatBuffers(tmpBuffer, buffer5);  
+  return tmpBuffer;
+};
+function concatBuffers(buffer1, buffer2){
+  var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+  tmp.set(new Uint8Array(buffer1), 0);
+  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+  return tmp.buffer;
+};
 function saveByteArrayToFile(data, name) {
    var a = document.createElement("a");
    document.body.appendChild(a);
@@ -292,72 +309,96 @@ function saveByteArrayToFile(data, name) {
    a.download = name;
    a.click();
    window.URL.revokeObjectURL(url);
-};
-    
-function sendFile(file,to){
-  //Отправляем бинарные данные в формате:
-  // chunk   total_chunks   file_id        binary_data
-  //0000001     0000001     0000001    00000000000000000000....
-  chunkSize = 16384-36; //36 - дополнительная информация о файле
-  var total_chunks = Math.ceil(file.content.byteLength/chunkSize);
-  total_chunks =  leftPadWithZeros(total_chunks,6);
-  var id = leftPadWithZeros(file.id,6);
-  for(var i = 0; i < file.content.byteLength; i = i + chunkSize){
-    var chunk = leftPadWithZeros((i/chunkSize),6);
-    var meta = chunk + total_chunks + id
-    var meta_data =  str2ab(meta);
-    var binary_data = file.content.slice(i, i + chunkSize);
-    
-    var data_to_send = concatBuffers(meta_data,binary_data);
-    try{
-        //TODO иногда при отправке больших файлов падает канал, нужно подымать его по новой 
-        //и повторять отправку недоставленных чанков
-        peers[to].channel.send(data_to_send);
-      }catch(e){
-        console.log(e);
-      }          
-  }
 }
 
-function concatBuffers(buffer1, buffer2) {
-  var tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
-  tmp.set(new Uint8Array(buffer1), 0);
-  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
-  return tmp.buffer;
-};
-
-function leftPadWithZeros(number, length){
-    var str = '' + number;
-    while (str.length < length) {
-        str = '0' + str;
+function bindEvents (channel) {
+	channel.onopen = function () {
+    //Добавляем в список пользователей владельца канала.
+    $('.nicknames').append('<div>' + channel.owner + '</div>');
+    console.log('connection open');
+	};
+	channel.onmessage = function (e) {
+    //Получили пакет будем его парсить
+    // msgType(6 bytes)   currentChunk(12 bytes)   totalChunks(12 bytes)   transferId(12 bytes)      message(16342 bytes max)       =   16384
+  
+    var msgType = ab2str( e.data.slice(0, 6));
+    var currentChunk = ab2str( e.data.slice(6, 18));
+    var totalChunks = ab2str( e.data.slice(18, 30));
+    var transferId = ab2str( e.data.slice(30, 42));
+    var message = e.data.slice(42, e.data.byteLength);
+    
+    if(msgType === '001'){
+      console.log('Получили текстовое сообщение');
+      //Показываем сообщения у текущего пользователя
+      var msg = ab2str(message);
+      $('.chat').append('<div>' + e.currentTarget.owner + ': ' + msg + '</div>');
+        
+      //Скроллим чат
+      var height = $('.chat')[0].scrollHeight;
+      $('.chat').scrollTop(height);  
+    }else if(msgType === '002'){
+      console.log('Запрос на скачивание файла от', e.currentTarget.owner);
+        var msg = ab2str(message);
+        var data = JSON.parse(msg);
+        
+        //Сохраняем мета информацию о принимаемом файле
+        received_files[data.id] = {
+          id: data.id,
+          name: data.name,
+          size: data.size,
+          content: new ArrayBuffer(0),
+          from: channel.owner
+        }
+        
+        //При клике по ссылке - отправляем запрос на скаичвание файла
+        $('.chat').append('<div>' + e.currentTarget.owner + ': <a href="#" onclick="msgSend(\'acceptFile\',\'' + data.id + '\',\'' + e.currentTarget.owner + '\')">' + data.name + '</a></div>');
+    }else if(msgType === '003'){
+      //Отправляем запрошеный файл, если он есть
+       console.log('Получили запрос на отправку файла от', e.currentTarget.owner);
+       var fileId = ab2str(message);
+       var to = e.currentTarget.owner;
+       console.log(fileId);
+       
+       if (files[fileId].size === 0) {
+         alert('Файл пустой.Не удалось передать файл пользователю ', to);
+         return;
+       }else if(files[fileId].size > 0 && peers[to].channel !== undefined){
+         msgSend('file', files[fileId], to);
+       }
+    }else if(msgType === '004'){
+      //Принимаем чанк только если есть ожидаемый файл и мы не принимали чанк раньше
+      var content = received_files[transferId].content;
+      if(parseInt(currentChunk) === 1){
+        var checkLength = 1;
+        console.log('first');
+      }else if(parseInt(currentChunk) > 1 && message.byteLength < 16342){
+        var checkLength = (parseInt(currentChunk) - 1)*16342 + message.byteLength + 1;
+        console.log('second');
+      }else{
+        var checkLength = parseInt(currentChunk)*16342 + 1;
+        console.log('thrid');
+      }      
+      if(content !== undefined && content.byteLength < checkLength){
+        console.log(currentChunk);
+        console.log(totalChunks);
+        received_files[transferId].content = concatBuffers(content,message);
+      }
+      //Если последний чанк - сохраняем файл
+      if(parseInt(currentChunk) === parseInt(totalChunks)){
+        console.log(received_files[transferId].content.byteLength);
+        saveByteArrayToFile(received_files[transferId].content, received_files[transferId].name);          
+      }        
     }
-    return str;
+	}
 }
 
-function ab2str(buf) {
-  return String.fromCharCode.apply(null, new Uint16Array(buf));
-}
-
-function str2ab(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint16Array(buf);
-  for (var i=0, strLen=str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-
-function acceptFile(filename, owner){
-  msgSend('acceptFile', filename, owner);
-}
 
 function createConnection(name, current_name){
    //Инициализируем подключение если его нет
   if (peers[name] === undefined){
     peers[name] = {
       cache: []
-    };
-    
+    };    
     var pc = new PeerConnection(server, options);
     
     initConn(pc, name, current_name, 'answer');
