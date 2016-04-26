@@ -103,22 +103,26 @@ var options = {
                 
                 createConnection(data.from, currentName);
                 
-                var pc = peers[data.from].connection;
-                
-                pc.setRemoteDescription(new SessionDescription(data.localDescription));
-                 
-                pc.createAnswer(function(answer) {                  
-                  pc.setLocalDescription(answer);
-                  console.log('answer created');
-                },function(err){
-                  console.log(err);
-                });
+                if(peers[data.from].connection !== undefined){  
+                    var pc = peers[data.from].connection;
+                    
+                    pc.setRemoteDescription(new SessionDescription(data.localDescription));
+                    
+                    pc.createAnswer(function(answer) {                  
+                    pc.setLocalDescription(answer);
+                    console.log('answer created');
+                    },function(err){
+                    console.log(err);
+                    });
+                }
             });
             
             socket.on('answer', function(data){   
-              console.log('receive answer from ', data.from);       
-              var pc = peers[data.from].connection;
-	            pc.setRemoteDescription(new SessionDescription(data.localDescription));
+              console.log('receive answer from ', data.from); 
+              if(peers[data.from].connection !== undefined){     
+                var pc = peers[data.from].connection;
+              }
+	          pc.setRemoteDescription(new SessionDescription(data.localDescription));
             });
           }else{
               alert('Ошибка при логине');
@@ -139,6 +143,8 @@ var options = {
           
           
         });
+        
+        
         
         //Отправка файла
         var fileInput = document.getElementById('fileInput');
@@ -164,8 +170,24 @@ var options = {
 
       });      
       
- });
-      
+      //Закрываем каналы при отключении
+        window.addEventListener("beforeunload", onBeforeUnload);
+        function onBeforeUnload(e) {
+            for (var peer in peers) {
+                if (peers.hasOwnProperty(peer)) {
+                    if (peers[peer].channel !== undefined) {
+                        try {
+                            peers[peer].channel.close();
+                        } catch (e) {}
+                    }
+                }
+            }
+        }
+
+ });      
+
+
+
 
 function msgSend(type, data, to){
   //Отправляем все сообщения как ArrayBuffer в следующем формате
@@ -389,20 +411,6 @@ function initConn(pc, name, currentName, sdpType) {
 }
 
 
-
-//Закрываем каналы при отключении
-window.addEventListener("beforeunload", onBeforeUnload);
-function onBeforeUnload(e) {
-	for (var peer in peers) {
-		if (peers.hasOwnProperty(peer)) {
-			if (peers[peer].channel !== undefined) {
-				try {
-					peers[peer].channel.close();
-				} catch (e) {}
-			}
-		}
-	}
-}
 
 
 
