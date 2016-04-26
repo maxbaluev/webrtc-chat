@@ -211,6 +211,7 @@ function msgSend(type, data, to){
       var dataPacket = createPacket('message', ++currentChunk, totalChunks, '000000', data);
       sendPacket(dataPacket, to);
     }
+    console.log('Отправили текстовое сообщение всем пирам');
   }   
   if(type === 'fileSend' && data.size >= 0){
     //Показываем сообщения у текущего пользователя
@@ -219,11 +220,13 @@ function msgSend(type, data, to){
     //Отправляем запрос на скачивание всем пирам
     var dataPacket = createPacket('fileSend', '1', '1', '000000', JSON.stringify(data));
     sendPacket(dataPacket, to);
+    console.log('Отправили запрос на скачивание файла всем пирам');
   } 
   if(type === 'acceptFile'){
     //Отправляем запрос на согласие скачивания
     var dataPacket = createPacket('acceptFile', '1', '1', '000000', data);
     sendPacket(dataPacket, to);
+    console.log('Отправили согласие на загрузку файла пользователю', to);
   } 
   if(type === 'file'){
     //Отправляем файл    
@@ -236,64 +239,11 @@ function msgSend(type, data, to){
       var binaryData = data.content.slice(i, i + chunkSize);  
       var dataPacket = createPacket('file', ++currentChunk, totalChunks, id, binaryData);
       sendPacket(dataPacket, to);           
-    }  
+    }
+    console.log('Отправили файл пользователю', to);
   } 
 }
-function createPacket(msgType, currentChunk, totalChunks, transferId, message){ 
-  if(msgType === 'message'){
-    var msgTypeBytes =  str2ab('001');
-    var msgBytes = str2ab(message);
-  }else if(msgType === 'fileSend'){
-    var msgTypeBytes =  str2ab('002');
-    var msgBytes = str2ab(message);
-  }else if(msgType === 'acceptFile'){
-    var msgTypeBytes =  str2ab('003');
-    var msgBytes = str2ab(message);
-  }else if(msgType === 'file'){
-    var msgTypeBytes =  str2ab('004');
-    var msgBytes = message;
-  }
-  
-  var currentChunkBytes = str2ab(leftPadWithZeros(currentChunk, 6));
-  var totalChunksBytes = str2ab(leftPadWithZeros(totalChunks, 6));
-  var transferIdBytes =  str2ab(transferId); 
-  
-  return concatFiveBuffers(msgTypeBytes, currentChunkBytes, totalChunksBytes, transferIdBytes, msgBytes);
-}
-function sendPacket(dataPacket, to){
-  //TODO иногда при отправке больших файлов падает канал, нужно подымать его по новой 
-  //и повторять отправку недоставленных чанков  
-  if(to === 'all'){
-  //Отправляем сообщение всем пирам
-    for (var peer in peers) {
-      if (peers.hasOwnProperty(peer)) {
-        if (peers[peer].channel !== undefined) {
-          try {
-             peers[peer].channel.send(dataPacket);
-           } catch (e) {
-              console.log(e);
-           }
-         }
-       }
-     }
-   }else{
-     if(peers[to] != null){
-      try{
-        peers[to].channel.send(dataPacket);
-      }catch(e){
-        console.log(e);
-      }       
-     }
-   }   
-}
-
-function bindEvents (channel) {
-	channel.onopen = function () {
-    //Добавляем в список пользователей владельца канала.
-    $('.nicknames').append('<div>' + channel.owner + '</div>');
-    console.log('connection open');
-	};
-	channel.onmessage = function (e) {
+function msgReceive(e){
     //Получили пакет будем его парсить
     // msgType(6 bytes)   currentChunk(12 bytes)   totalChunks(12 bytes)   transferId(12 bytes)      message(16342 bytes max)       =   16384
   
@@ -359,6 +309,64 @@ function bindEvents (channel) {
         saveByteArrayToFile(receivedFiles[transferId].content, receivedFiles[transferId].name);          
       }        
     }
+}
+function createPacket(msgType, currentChunk, totalChunks, transferId, message){ 
+  if(msgType === 'message'){
+    var msgTypeBytes =  str2ab('001');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'fileSend'){
+    var msgTypeBytes =  str2ab('002');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'acceptFile'){
+    var msgTypeBytes =  str2ab('003');
+    var msgBytes = str2ab(message);
+  }else if(msgType === 'file'){
+    var msgTypeBytes =  str2ab('004');
+    var msgBytes = message;
+  }
+  
+  var currentChunkBytes = str2ab(leftPadWithZeros(currentChunk, 6));
+  var totalChunksBytes = str2ab(leftPadWithZeros(totalChunks, 6));
+  var transferIdBytes =  str2ab(transferId); 
+  
+  return concatFiveBuffers(msgTypeBytes, currentChunkBytes, totalChunksBytes, transferIdBytes, msgBytes);
+}
+function sendPacket(dataPacket, to){
+  //TODO иногда при отправке больших файлов падает канал, нужно подымать его по новой 
+  //и повторять отправку недоставленных чанков  
+  if(to === 'all'){
+  //Отправляем сообщение всем пирам
+    for (var peer in peers) {
+      if (peers.hasOwnProperty(peer)) {
+        if (peers[peer].channel !== undefined) {
+          try {
+             peers[peer].channel.send(dataPacket);
+           } catch (e) {
+              console.log(e);
+           }
+         }
+       }
+     }
+   }else{
+     if(peers[to] != null){
+      try{
+        peers[to].channel.send(dataPacket);
+      }catch(e){
+        console.log(e);
+      }       
+     }
+   }   
+}
+
+function bindEvents (channel) {
+	channel.onopen = function () {
+    //Добавляем в список пользователей владельца канала.
+    $('.nicknames').append('<div>' + channel.owner + '</div>');
+    console.log('connection open');
+	};
+	channel.onmessage = function (e) {
+        msgReceive(e);
+        
 	}
 }
 
