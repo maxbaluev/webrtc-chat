@@ -1,11 +1,12 @@
-var PeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-var IceCandidate = window.RTCIceCandidate || window.RTCIceCandidate;
-var SessionDescription = window.RTCSessionDescription || window.RTCSessionDescription;
-
+var PeerConnection = window.RTCPeerConnection;
+var IceCandidate = window.RTCIceCandidate;
+var SessionDescription = window.RTCSessionDescription;
 var socket;
 var peers = {};
 var files = {};
 var receivedFiles = {};
+
+//Настройки PeerConnection
 var server = {
   iceServers: [
     {urls: "stun:23.21.150.121"},
@@ -14,7 +15,7 @@ var server = {
 };
 var options = {
   optional: [
-    //{DtlsSrtpKeyAgreement: true}, // требуется для соединения между Chrome и Firefox
+    {DtlsSrtpKeyAgreement: true}, // требуется для соединения между Chrome и Firefox
     //{RtpDataChannels: true} // FCK!!!!!!!!!!
   ]
 }
@@ -69,7 +70,7 @@ var options = {
 	            var pc = new PeerConnection(server, options);
               
               // Инициализируем его
-            	initConn(pc, data.name, currentName, "offer");
+              initConn(pc, data.name, currentName, "offer");
               
               // Сохраняем пир в списке
               peers[data.name].connection = pc;
@@ -130,6 +131,9 @@ var options = {
           }
         });
         
+        
+        
+        //Ввод пользователя
         $('.chatForm').on('submit', function(e){
           e.preventDefault();
           var msg = $('.chat-text').val();
@@ -140,11 +144,7 @@ var options = {
           //Скроллим чат
           var height = $('.chat')[0].scrollHeight;
           $('.chat').scrollTop(height);
-          
-          
-        });
-        
-        
+        });       
         
         //Отправка файла при загрузке его в форму
         var fileInput = document.getElementById('fileInput');
@@ -167,39 +167,43 @@ var options = {
             var file = this.files[0];          
             fReader.readAsArrayBuffer(file);
         }
+        
+        
 
       });      
       
-      //Закрываем каналы при отключении
-        window.addEventListener("beforeunload", onBeforeUnload);
-        function onBeforeUnload(e) {
-            for (var peer in peers) {
-                if (peers.hasOwnProperty(peer)) {
-                    if (peers[peer].channel !== undefined) {
-                        try {
-                            peers[peer].channel.close();
-                        } catch (e) {}
-                    }
+//Закрываем каналы при отключении
+window.addEventListener("beforeunload", onBeforeUnload);
+    function onBeforeUnload(e) {
+        for (var peer in peers) {
+            if (peers.hasOwnProperty(peer)) {
+                if (peers[peer].channel !== undefined) {
+                    try {
+                        peers[peer].channel.close();
+                    } catch (e) {}
                 }
             }
         }
+    }
+});      
 
- });      
 
-
-
-function bindEvents (channel) {
+//События канала
+function bindEvents (channel)  {
 	channel.onopen = function () {
-    //Добавляем в список пользователей владельца канала.
-    $('.nicknames').append('<div>' + channel.owner + '</div>');
-    console.log('connection open');
-	};
+        //Добавляем в список пользователей владельца канала.
+        $('.nicknames').append('<div>' + channel.owner + '</div>');
+        console.log('Открыто соединение');
+        };
 	channel.onmessage = function (e) {
         msgReceive(e);
 	}
-}
+    channel.onerror = function(err) {
+        console.log('Ошибка канала:', err);
+    };
+ }
+//Инициализируем подключение если его нет
 function createConnection(name, currentName){
-   //Инициализируем подключение если его нет
   if (peers[name] === undefined){
     peers[name] = {
       cache: []
