@@ -14,7 +14,7 @@ var server = {
 };
 var options = {
   optional: [
-    {DtlsSrtpKeyAgreement: true}, // требуется для соединения между Chrome и Firefox
+    //{DtlsSrtpKeyAgreement: true}, // требуется для соединения между Chrome и Firefox
     //{RtpDataChannels: true} // FCK!!!!!!!!!!
   ]
 }
@@ -122,7 +122,7 @@ var options = {
               if(peers[data.from].connection !== undefined){     
                 var pc = peers[data.from].connection;
               }
-	          pc.setRemoteDescription(new SessionDescription(data.localDescription));
+              pc.setRemoteDescription(new SessionDescription(data.localDescription));
             });
           }else{
               alert('Ошибка при логине');
@@ -146,7 +146,7 @@ var options = {
         
         
         
-        //Отправка файла
+        //Отправка файла при загрузке его в форму
         var fileInput = document.getElementById('fileInput');
         var fReader = new FileReader();
 
