@@ -1,4 +1,3 @@
-var PeerConnection = window.RTCPeerConnection;
 var PeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
 var SessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
 var IceCandidate = window.RTCIceCandidate;
