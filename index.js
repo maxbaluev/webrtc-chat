@@ -63,7 +63,7 @@ var options = {
             $('.content').css('display','block');
             
             socket.on('newuser', function(data){
-              console.log('receive newuser ', data.name);
+              console.log('В чат зашел новый пользователь ', data.name);
               peers[data.name] = {
                 cache: []
               };              
@@ -95,7 +95,7 @@ var options = {
             });
             
             socket.on('candidate', function(data){
-              console.log('receive candidate from ', data.from);
+              console.log('Получили ICE кандидата от: ', data.from);
               createConnection(data.from, currentName);
               var pc = peers[data.from].connection;
 	            pc.addIceCandidate(new IceCandidate(data.candidate));
@@ -113,7 +113,7 @@ var options = {
                     
                     pc.createAnswer(function(answer) {                  
                     pc.setLocalDescription(answer);
-                    console.log('answer created');
+                    console.log('Answer создан');
                     },function(err){
                     console.log(err);
                     });
@@ -146,7 +146,7 @@ var options = {
           //Скроллим чат
           var height = $('.chat')[0].scrollHeight;
           $('.chat').scrollTop(height);
-        });       
+        });
         
         //Отправка файла при загрузке его в форму
         var fileInput = document.getElementById('fileInput');
