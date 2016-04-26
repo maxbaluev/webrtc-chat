@@ -176,30 +176,30 @@ var options = {
       
 //Закрываем каналы при отключении
 window.addEventListener("beforeunload", onBeforeUnload);
-    function onBeforeUnload(e) {
-        for (var peer in peers) {
-            if (peers.hasOwnProperty(peer)) {
-                if (peers[peer].channel !== undefined) {
-                    try {
-                        peers[peer].channel.close();
-                    } catch (e) {}
-                }
-            }
-        }
+  function onBeforeUnload(e) {
+    for (var peer in peers) {
+      if (peers.hasOwnProperty(peer)) {
+        if (peers[peer].channel !== undefined) {
+          try {
+            peers[peer].channel.close();
+          } catch (e) {}
+         }
+      }
     }
+  }
 });      
 
 
 //События канала
 function bindEvents (channel)  {
-	channel.onopen = function () {
+    channel.onopen = function () {
         //Добавляем в список пользователей владельца канала.
         $('.nicknames').append('<div>' + channel.owner + '</div>');
         console.log('Открыто соединение');
         };
-	channel.onmessage = function (e) {
+    channel.onmessage = function (e) {
         msgReceive(e);
-	}
+    }
     channel.onerror = function(err) {
         console.log('Ошибка канала:', err);
     };
@@ -223,31 +223,29 @@ function createConnection(name, currentName){
   }
 }
 function initConn(pc, name, currentName, sdpType) {
-	pc.onicecandidate = function (event) {
-		if (event.candidate) {
-			// При обнаружении нового ICE кандидата добавляем его в список для дальнейшей отправки
-			peers[name].cache.push(event.candidate);
-		} else {
-			// Когда обнаружение кандидатов завершено, обработчик будет вызван еще раз, но без кандидата
-			// В этом случае мы отправялем пиру сначала SDP offer или SDP answer (в зависимости от SDP запроса)
-      
-			socket.emit(sdpType, {to: name, from: currentName, localDescription: pc.localDescription});
-      
-			// ...а затем все найденные ранее ICE кандидаты
-			for (var i = 0; i < peers[name].cache.length; i++) {
-        socket.emit("candidate", {to: name, from: currentName, candidate: peers[name].cache[i]});
-			}
-		}
-	}
+  pc.onicecandidate = function (event) {
+    if (event.candidate) {
+      // При обнаружении нового ICE кандидата добавляем его в список для дальнейшей отправки
+      peers[name].cache.push(event.candidate);
+      } else {
+        // Когда обнаружение кандидатов завершено, обработчик будет вызван еще раз, но без кандидата
+        // В этом случае мы отправялем пиру сначала SDP offer или SDP answer (в зависимости от SDP запроса)
+        socket.emit(sdpType, {to: name, from: currentName, localDescription: pc.localDescription});
+        // ...а затем все найденные ранее ICE кандидаты
+        for (var i = 0; i < peers[name].cache.length; i++) {
+          socket.emit("candidate", {to: name, from: currentName, candidate: peers[name].cache[i]});
+        }
+      }
+  }
   
-	pc.oniceconnectionstatechange = function (event) {
-		if (pc.iceConnectionState == "disconnected") {
+  pc.oniceconnectionstatechange = function (event) {
+    if (pc.iceConnectionState == "disconnected") {
       //Пир отключился удаляем из списка юзеров  
       console.log('Отключился пользователь:', name)
       $('.nicknames').find('div:contains("' + name + '")').remove();
-			delete peers[name];
-		}
-	}
+        delete peers[name];
+    }
+  }
 }
 
 
@@ -336,7 +334,7 @@ function msgReceive(e){
           name: data.name,
           size: data.size,
           content: new ArrayBuffer(0),
-          from: e.currentTarget.owner
+          from: channel.owner
         }
         
         //При клике по ссылке - отправляем запрос на скаичвание файла
@@ -434,11 +432,11 @@ function str2ab(str) {
   return buf;
 }
 function leftPadWithZeros(number, length){
-    var str = '' + number;
-    while (str.length < length){
-        str = '0' + str;
-    }
-    return str;
+  var str = '' + number;
+  while (str.length < length){
+    str = '0' + str;
+  }
+  return str;
 }
 function concatFiveBuffers(buffer1, buffer2, buffer3, buffer4, buffer5) {
   var tmpBuffer = concatBuffers(buffer1, buffer2);
