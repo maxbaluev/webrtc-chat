@@ -334,7 +334,7 @@ function msgReceive(e){
           name: data.name,
           size: data.size,
           content: new ArrayBuffer(0),
-          from: channel.owner
+          from: e.currentTarget.owner
         }
         
         //При клике по ссылке - отправляем запрос на скаичвание файла
