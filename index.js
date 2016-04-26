@@ -69,7 +69,7 @@ var options = {
               };              
               
               // Создаем новое подключение
-	            var pc = new PeerConnection(server, options);
+              var pc = new PeerConnection(server, options);
               
               // Инициализируем его
               initConn(pc, data.name, currentName, "offer");
@@ -336,7 +336,7 @@ function msgReceive(e){
           name: data.name,
           size: data.size,
           content: new ArrayBuffer(0),
-          from: channel.owner
+          from: e.currentTarget.owner
         }
         
         //При клике по ссылке - отправляем запрос на скаичвание файла
