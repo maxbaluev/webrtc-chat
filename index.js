@@ -188,7 +188,64 @@ var options = {
 
 
 
+function bindEvents (channel) {
+	channel.onopen = function () {
+    //Добавляем в список пользователей владельца канала.
+    $('.nicknames').append('<div>' + channel.owner + '</div>');
+    console.log('connection open');
+	};
+	channel.onmessage = function (e) {
+        msgReceive(e);
+	}
+}
+function createConnection(name, currentName){
+   //Инициализируем подключение если его нет
+  if (peers[name] === undefined){
+    peers[name] = {
+      cache: []
+    };    
+    var pc = new PeerConnection(server, options);
+    
+    initConn(pc, name, currentName, 'answer');
+    
+    peers[name].connection = pc;
+    pc.ondatachannel = function(e) {
+      peers[name].channel = e.channel;
+      peers[name].channel.owner = name;
+      bindEvents(peers[name].channel);
+    }
+  }
+}
+function initConn(pc, name, currentName, sdpType) {
+	pc.onicecandidate = function (event) {
+		if (event.candidate) {
+			// При обнаружении нового ICE кандидата добавляем его в список для дальнейшей отправки
+			peers[name].cache.push(event.candidate);
+		} else {
+			// Когда обнаружение кандидатов завершено, обработчик будет вызван еще раз, но без кандидата
+			// В этом случае мы отправялем пиру сначала SDP offer или SDP answer (в зависимости от SDP запроса)
+      
+			socket.emit(sdpType, {to: name, from: currentName, localDescription: pc.localDescription});
+      
+			// ...а затем все найденные ранее ICE кандидаты
+			for (var i = 0; i < peers[name].cache.length; i++) {
+        socket.emit("candidate", {to: name, from: currentName, candidate: peers[name].cache[i]});
+			}
+		}
+	}
+  
+	pc.oniceconnectionstatechange = function (event) {
+		if (pc.iceConnectionState == "disconnected") {
+      //Пир отключился удаляем из списка юзеров  
+      console.log('Отключился пользователь:', name)
+      $('.nicknames').find('div:contains("' + name + '")').remove();
+			delete peers[name];
+		}
+	}
+}
 
+
+//Протокол передачи сообщений
 function msgSend(type, data, to){
   //Отправляем все сообщения как ArrayBuffer в следующем формате
   // msgType(6 bytes)   currentChunk(12 bytes)   totalChunks(12 bytes)   transferId(12 bytes)      message(16342 bytes max)       =   16384
@@ -357,70 +414,6 @@ function sendPacket(dataPacket, to){
      }
    }   
 }
-
-function bindEvents (channel) {
-	channel.onopen = function () {
-    //Добавляем в список пользователей владельца канала.
-    $('.nicknames').append('<div>' + channel.owner + '</div>');
-    console.log('connection open');
-	};
-	channel.onmessage = function (e) {
-        msgReceive(e);
-        
-	}
-}
-
-
-function createConnection(name, currentName){
-   //Инициализируем подключение если его нет
-  if (peers[name] === undefined){
-    peers[name] = {
-      cache: []
-    };    
-    var pc = new PeerConnection(server, options);
-    
-    initConn(pc, name, currentName, 'answer');
-    
-    peers[name].connection = pc;
-    pc.ondatachannel = function(e) {
-      peers[name].channel = e.channel;
-      peers[name].channel.owner = name;
-      bindEvents(peers[name].channel);
-    }
-  }
-}
-
-function initConn(pc, name, currentName, sdpType) {
-	pc.onicecandidate = function (event) {
-		if (event.candidate) {
-			// При обнаружении нового ICE кандидата добавляем его в список для дальнейшей отправки
-			peers[name].cache.push(event.candidate);
-		} else {
-			// Когда обнаружение кандидатов завершено, обработчик будет вызван еще раз, но без кандидата
-			// В этом случае мы отправялем пиру сначала SDP offer или SDP answer (в зависимости от SDP запроса)
-      
-			socket.emit(sdpType, {to: name, from: currentName, localDescription: pc.localDescription});
-      
-			// ...а затем все найденные ранее ICE кандидаты
-			for (var i = 0; i < peers[name].cache.length; i++) {
-        socket.emit("candidate", {to: name, from: currentName, candidate: peers[name].cache[i]});
-			}
-		}
-	}
-  
-	pc.oniceconnectionstatechange = function (event) {
-		if (pc.iceConnectionState == "disconnected") {
-      //Пир отключился удаляем из списка юзеров  
-      console.log('Отключился пользователь:', name)
-      $('.nicknames').find('div:contains("' + name + '")').remove();
-			delete peers[name];
-		}
-	}
-}
-
-
-
-
 
 //Вспомогательные функции
 function ab2str(buf) {
