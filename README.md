@@ -1,6 +1,6 @@
 # webrtc-chat
 
-Текстовый WerbRTC чат с возможностью передеачи файлов. Demo: http://webrtc-chat.azurewebsites.net/
+Текстовый WerbRTC чат с возможностью передеачи файлов, без использования WebRTC фреймворков. Demo: http://webrtc-chat.azurewebsites.net/
 
 TODO:
 Чат не будет работать если оба пользователя находятся за NAT'ом из-за отсутствия TURN сервера.
